@@ -546,9 +546,6 @@ static int32 ParsePciPath(
 
 static int32 PciParseDev(
 			 BBIS_HANDLE *brdHdl,
-#ifdef OSS_VXBUS_SUPPORT
-			 VXB_DEVICE_ID busCtrlID, 
-#endif	
 			 u_int32 pciBusNbr,
 			 u_int32 pciDevNbr,
 			 int32 *vendorIDP,
@@ -1014,10 +1011,6 @@ static int32 CHAMELEON_BrdInit(
   BBIS_CHAM_GRP *lGrp = NULL;
   u_int32 gotSize = 0, un;
   u_int8 groupBaseDevIncluded=0;
-#ifdef OSS_VXBUS_SUPPORT
-  VXB_DEVICE_ID busCtrlID = sysGetMdisBusCtrlID();
-#endif	
-	
 
   DBGWRT_1((DBH, "BB - %s_BrdInit\n",BBNAME));
   /* PCIbus */
@@ -1047,11 +1040,10 @@ static int32 CHAMELEON_BrdInit(
   /* try to find mem mapped table */
   h->tblType = OSS_ADDRSPACE_MEM;
   chErr = h->chamFuncTbl[OSS_ADDRSPACE_MEM].InitPci( h->osHdl,
-#ifdef OSS_VXBUS_SUPPORT
-						     busCtrlID,
-#endif	
 						     OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr), 
-						     h->pciDevNbr, h->pciFuncNbr, &chamHdl );
+						     h->pciDevNbr, 
+                                                     h->pciFuncNbr, 
+                                                     &chamHdl );
 	
   if( chErr == CHAMELEONV2_TABLE_NOT_FOUND ){
     DBGWRT_2((DBH," no mem mapped table found, try to find io mapped table\n"));
@@ -1796,11 +1788,8 @@ static int32 CHAMELEON_CfgInfo(
 {
   va_list		argptr;
   int32       status=0;
-#ifdef OSS_VXBUS_SUPPORT
-  VXB_DEVICE_ID busCtrlID = sysGetMdisBusCtrlID();
-#endif
 
-  DBGWRT_1((DBH, "BB - %s_CfgInfo (code: %04x)\n",BBNAME, code));
+    DBGWRT_1((DBH, "BB - %s_CfgInfo\n",BBNAME));
 
   va_start(argptr,code);
 
@@ -2789,9 +2778,6 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
   int32 pciBusNbr=0, pciDevNbr;
   int32 error;
   int32 vendorID, deviceID, headerType, secondBus;
-#ifdef OSS_VXBUS_SUPPORT
-  VXB_DEVICE_ID busCtrlID = sysGetMdisBusCtrlID();
-#endif	
 
   /* parse whole pci path until the chameleon device is reached */
   for(i=0; i < h->pciPathLen; i++) {
@@ -2809,9 +2795,6 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
       for (pciBusNbr=0; pciBusNbr<0xff; pciBusNbr++) {
 	
 	error = PciParseDev( h, 
-#ifdef OSS_VXBUS_SUPPORT				
-			     busCtrlID,
-#endif				
 			     OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr), 
 			     h->pciPath[0], &vendorID, &deviceID, &headerType,
 			     &secondBus );
@@ -2827,9 +2810,10 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
       }    
     } else {
       /* parse device only once */
-      if( (error = PciParseDev( h, OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr), 
-				pciDevNbr, &vendorID, &deviceID, &headerType,
-				&secondBus )))
+      if( (error = PciParseDev( h, 
+                                OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr ), 
+				pciDevNbr, 
+                                &vendorID, &deviceID, &headerType, &secondBus )))
 	return error;
     }
 
@@ -2854,7 +2838,7 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
     DBGWRT_2((DBH, " domain %d bus %d dev 0x%x: vend=0x%x devId=0x%x second bus %d\n",
     	      h->pciDomainNbr, pciBusNbr, pciDevNbr, vendorID, deviceID, secondBus ));
 
-    --- continue with new bus ---
+    /* --- continue with new bus --- */
     pciBusNbr = secondBus;
 #endif
   }
@@ -2873,7 +2857,7 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
  *
  *---------------------------------------------------------------------------
  *  Input......: h          handle
- *				 pciBusNbr	pci bus number (merged with domain)
+ *				 pciBusNbr  pci bus number (merged with domain)
  *				 pciDevNbr  pci dev number
  *  Output.....: returns: 	error code (only fails if config access error)
  *				 *vendorIDP vendor id
@@ -2884,15 +2868,12 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
  ****************************************************************************/
 static int32 PciParseDev(
 			 BBIS_HANDLE *h,
-#ifdef OSS_VXBUS_SUPPORT
-			 VXB_DEVICE_ID  busCtrlID,
-#endif	
 			 u_int32 pciBusNbr,
 			 u_int32 pciDevNbr,
 			 int32 *vendorIDP,
 			 int32 *deviceIDP,
 			 int32 *headerTypeP,
-			 int32 *secondBusP)		/* nodoc */
+			 int32 *secondBusP)	/* nodoc */
 {
   int32 error;
 
@@ -2910,18 +2891,12 @@ static int32 PciParseDev(
     }
 
   /*--- check to see if device present ---*/
-  error = OSS_PciGetConfig( h->osHdl, 
-#ifdef OSS_VXBUS_SUPPORT
-			    busCtrlID,
-#endif                		
+  error = OSS_PciGetConfig( h->osHdl,            		
 			    pciBusNbr, pciMainDevNbr, pciDevFunc,
 			    OSS_PCI_VENDOR_ID, vendorIDP );
 
   if( error == 0 )
     error = OSS_PciGetConfig( h->osHdl, 
-#ifdef OSS_VXBUS_SUPPORT
-			      busCtrlID,
-#endif 
 			      pciBusNbr, pciMainDevNbr, pciDevFunc,
 			      OSS_PCI_DEVICE_ID, deviceIDP );
 
@@ -2932,12 +2907,8 @@ static int32 PciParseDev(
   if( *vendorIDP == 0xffff && *deviceIDP == 0xffff )
     return ERR_SUCCESS;		/* not present */
 
-/* #ifdef VXW_PCI_DOMAIN_SUPPORT  */
   /*--- device is present, is it a bridge ? ---*/
   error = OSS_PciGetConfig( h->osHdl,
-#ifdef OSS_VXBUS_SUPPORT
-			    busCtrlID,
-#endif
 			    pciBusNbr, pciMainDevNbr, pciDevFunc,
 			    OSS_PCI_HEADER_TYPE, headerTypeP );
 
@@ -2955,9 +2926,6 @@ static int32 PciParseDev(
 
   /*--- it is a bridge, determine its secondary bus number ---*/
   error = OSS_PciGetConfig( h->osHdl,
-#ifdef OSS_VXBUS_SUPPORT
-			    busCtrlID,
-#endif
 			    pciBusNbr, pciMainDevNbr, pciDevFunc,
 			    PCI_SECONDARY_BUS_NUMBER | OSS_PCI_ACCESS_8,
 			    secondBusP );
@@ -2968,7 +2936,6 @@ static int32 PciParseDev(
 		     PCI_SECONDARY_BUS_NUMBER | OSS_PCI_ACCESS_8);
 
   return ERR_SUCCESS;
-/* #endif */
 }
 
 /********************************* PciCfgErr ********************************
@@ -2998,7 +2965,7 @@ static int32 PciCfgErr(
 
   if (pciDevNbr > 0x1f)
     {
-      // device number contains function in upper 3 bit
+      /* device number contains function in upper 3 bit */
       pciDevFunc = pciDevNbr >> 5;  // devNbr e.g. 0b 0101 1110
       pciMainDevNbr = pciDevNbr & 0x0000001f;
     }
