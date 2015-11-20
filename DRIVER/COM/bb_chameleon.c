@@ -1911,12 +1911,9 @@ static int32 CHAMELEON_CfgInfo(
 #ifdef CHAMELEON_USE_PCITABLE
 	/*
 	 * Take irq level from PCI config space instead from
-	 * table inside FPGA. Useful e.g. for EM05.
+	 * table inside FPGA (normal use case, except e.g. EM08).
 	 */
 	OSS_PciGetConfig( h->osHdl, 
-#ifdef OSS_VXBUS_SUPPORT
-			  busCtrlID,
-#endif			
 			  OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr), 
 			  h->pciDevNbr, 0, OSS_PCI_INTERRUPT_LINE, (int32*)level );
 
