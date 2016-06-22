@@ -1145,25 +1145,25 @@ static int32 CHAMELEON_BrdInit(
       if( (chamUnit.group == 0) || (groupBaseDevIncluded == 0) ){
 
 	/* excluding specified module codes */
-	for( un=0; un < h->exclModCodesNbr; un++ ){
-	  if( chamUnit.devId == h->exclModCodes[un] ){
-	    DBGWRT_2((DBH," unit %d: devId=0x%x excluded\n",
-		      u, h->exclModCodes[un] ));
+	for( un=0; un < h->exclModCodesNbr; un++ )
+	{
+		if( chamUnit.devId == h->exclModCodes[un] ){
+			DBGWRT_2((DBH," unit %d: devId=0x%x excluded\n", u, h->exclModCodes[un] ));
 
-	    exclude = 1;
-	    if( chamUnit.group != 0 ) {
-	      /* group, exclude also rest of group members */
-	      for( i=0; i < CHAMELEON_BBIS_MAX_GRPS; i++) {
-		if( excludedGroups[i] == 0 ) {
-		  /* end of list, first module of group */
-		  excludedGroups[i] = (u_int8)chamUnit.group;
-		  excludedGroups[i+1] = 0; /* mark end of list */
-		  break;
-		}
-	      }
-	    }
+			exclude = 1;
+			if( chamUnit.group != 0 ) {
+				/* group, exclude also rest of group members */
+				for( i=0; i < CHAMELEON_BBIS_MAX_GRPS - 1; i++) {
+					if( excludedGroups[i] == 0 ) {
+						/* end of list, first module of group */
+						excludedGroups[i] = (u_int8)chamUnit.group;
+						excludedGroups[i+1] = 0; /* mark end of list */
+						break;
+					}
+				}
+			}
 	    break;
-	  }
+		}
 	}
 
 	/* excluding members of groups marked for excluding */
@@ -1800,9 +1800,14 @@ static int32 CHAMELEON_CfgInfo(
       u_int32 *busNbr = va_arg( argptr, u_int32* );
       u_int32 mSlot   = va_arg( argptr, u_int32 );
 
-      if ( (mSlot > CHAMELEON_BBIS_MAX_DEVS) ||
-	   (h->devId[mSlot] == CHAMELEON_NO_DEV ))
-	status = ERR_BBIS_ILL_SLOT;
+      if ( mSlot > CHAMELEON_BBIS_MAX_DEVS - 1 )
+      {
+    	  DBGWRT_ERR((DBH,"*** %s_CfgInfo: mSlot out of range! (mslot = 0x%08x)\n", BBNAME, mSlot));
+    	  return ERR_BBIS_ILL_PARAM; /*safe, no resources allocated till here */
+      }
+
+      if (h->devId[mSlot] == CHAMELEON_NO_DEV )
+    	  status = ERR_BBIS_ILL_SLOT;
       else
 	/* PCIbus */
 #ifndef CHAM_ISA
@@ -1821,8 +1826,12 @@ static int32 CHAMELEON_CfgInfo(
       u_int32 *domainNbr = va_arg( argptr, u_int32* );
       u_int32 mSlot      = va_arg( argptr, u_int32 );
 
-      if ( (mSlot > CHAMELEON_BBIS_MAX_DEVS) ||
-	   (h->devId[mSlot] == CHAMELEON_NO_DEV ))
+      if ( mSlot > CHAMELEON_BBIS_MAX_DEVS - 1 ) {
+    	  DBGWRT_ERR((DBH,"*** %s_CfgInfo: mSlot out of range! (mslot = 0x%08x)\n", BBNAME, mSlot));
+    	  return ERR_BBIS_ILL_PARAM; /*safe, no resources allocated till here */
+      }
+
+      if ( (h->devId[mSlot] == CHAMELEON_NO_DEV ))
 	status = ERR_BBIS_ILL_SLOT;
       else
 	/* PCIbus */
@@ -1844,9 +1853,14 @@ static int32 CHAMELEON_CfgInfo(
       u_int32 *level  = va_arg( argptr, u_int32* );
       u_int32 *mode   = va_arg( argptr, u_int32* );
 
-      if ( (mSlot > CHAMELEON_BBIS_MAX_DEVS) ||
-	   (h->devId[mSlot] == CHAMELEON_NO_DEV )){
-	status = ERR_BBIS_ILL_SLOT;
+      if ( mSlot > CHAMELEON_BBIS_MAX_DEVS - 1 ) {
+    	  DBGWRT_ERR((DBH,"*** %s_CfgInfo: mSlot out of range! (mslot = 0x%08x)\n", BBNAME, mSlot));
+    	  return ERR_BBIS_ILL_PARAM; /*safe, no resources allocated till here */
+      }
+
+      if (h->devId[mSlot] == CHAMELEON_NO_DEV )
+      {
+    	  status = ERR_BBIS_ILL_SLOT;
       }
       else {
 	u_int16 chamTblInt=0;
@@ -2354,9 +2368,13 @@ static int32 CHAMELEON_GetMAddr(
 {
   DBGWRT_1((DBH, "BB - %s_GetMAddr: mSlot=0x%04x\n",BBNAME,mSlot));
 
-  if ( (mSlot > CHAMELEON_BBIS_MAX_DEVS) ||
-       (h->devId[mSlot] == CHAMELEON_NO_DEV ))
-    return ERR_BBIS_ILL_SLOT;
+
+  /* prevent array index violation */
+  if ( mSlot > CHAMELEON_BBIS_MAX_DEVS - 1 )
+	  return ERR_BBIS_ILL_SLOT;
+
+  if ( h->devId[mSlot] == CHAMELEON_NO_DEV )
+	  return ERR_BBIS_ILL_SLOT;
 
   /* group device? */ 
   if( h->devId[mSlot] == CHAMELEON_BBIS_GROUP ) {
@@ -2697,9 +2715,14 @@ static int32 CfgInfoSlot( BBIS_HANDLE *h, va_list argptr )	/* nodoc */
   *devRev   = 0;
   *slotName = '\0';
 
+  /* slot out of range ? */
+  if ( mSlot > CHAMELEON_BBIS_MAX_DEVS - 1 ) {
+	  DBGWRT_ERR((DBH,"*** CfgInfoSlot: mSlot out of range! (mslot = 0x%08x)\n", mSlot));
+	  return ERR_BBIS_ILL_PARAM; /*safe, no resources allocated till here */
+  }
+
   /* illegal slot? */
-  if( (mSlot > CHAMELEON_BBIS_MAX_DEVS) ||
-      (h->devId[mSlot] == CHAMELEON_NO_DEV) ){
+  if( h->devId[mSlot] == CHAMELEON_NO_DEV ) {
     /*
      * no debug print here because it will be called under Windows
      * with mSlot=0x00..0xff and 0x1000..0x10ff
