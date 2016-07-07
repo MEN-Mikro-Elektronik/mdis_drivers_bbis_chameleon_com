@@ -1169,7 +1169,7 @@ static int32 CHAMELEON_BrdInit(
 	/* excluding members of groups marked for excluding */
 	if( !exclude && chamUnit.group != 0 ) {
 	  for( i=0; excludedGroups[i] != 0 && 			/* end of list? */
-		 i < CHAMELEON_BBIS_MAX_GRPS; i++)
+		 i < CHAMELEON_BBIS_MAX_GRPS - 1; i++)
 	    {
 	      if( excludedGroups[i] == chamUnit.group ) {
 		exclude = 1;
@@ -1976,12 +1976,14 @@ static int32 CHAMELEON_CfgInfo(
       u_int32 *addrSpace = va_arg( argptr, u_int32* );
       CHAMELEONV2_UNIT	*unitP;
 
-      mSlot = mSlot; /* dummy access to avoid compiler warning */
+      if (mSlot > CHAMELEON_BBIS_MAX_DEVS - 1) { /* klocwork 2nd id127 */
+       		status = ERR_BBIS_ILL_SLOT;
+    		break;
+      }
 			
-      if ( (mSlot > CHAMELEON_BBIS_MAX_DEVS) ||
-	   (h->devId[mSlot] == CHAMELEON_NO_DEV )) {
-	status = ERR_BBIS_ILL_SLOT;
-	break;
+      if (h->devId[mSlot] == CHAMELEON_NO_DEV ) {
+    	  status = ERR_BBIS_ILL_SLOT;
+    	  break;
       } 
 			
       if( h->devId[mSlot] == CHAMELEON_BBIS_GROUP )
