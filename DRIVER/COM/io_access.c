@@ -33,6 +33,7 @@
 #include <MEN/maccess.h>
 
 #include <MEN/oss.h>
+#include <MEN/dbg.h>
 #include <MEN/desc.h>
 #include <MEN/bb_defs.h>
 #include <MEN/bb_entry.h>
