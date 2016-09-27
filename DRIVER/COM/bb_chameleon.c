@@ -393,6 +393,8 @@ static const char RCSid[]="$Id: bb_chameleon.c,v 1.48 2013/11/28 17:00:05 ts Exp
 #define DBH             h->debugHdl
 #define CHAMELEON_BBIS_DEBUG
 
+#undef NOSPINLOCKTEST
+
 /* ISA variant */
 #ifdef CHAM_ISA
 #	define BUSTYPE OSS_BUSTYPE_ISA
@@ -420,7 +422,7 @@ static const char RCSid[]="$Id: bb_chameleon.c,v 1.48 2013/11/28 17:00:05 ts Exp
 #define BBCHAM_GIRQ_IN_USE			0x14		/* in use register */
 #define BBCHAM_GIRQ_IN_USE_BIT		0x1			/* in use bit */
 
-// switch between io and mem maccess macros
+/* switch between io and mem maccess macros */
 #define _MREAD_D32(ret,ma,offs) {			\
     if( h->tblType == OSS_ADDRSPACE_IO ){               \
       ret = __BB_CHAMELEON_IoReadD32((MACCESS)ma,offs); \
@@ -492,7 +494,7 @@ typedef struct {
   u_int32		exclModCodesNbr;		/* number of excluded module codes */
   int32       devCountInit;           /* devCount value from *_Init for 
 					 multiple calls of *_BrdInit */
-  OSS_SPINL_HANDLE	*slHdl;			/* spin lock handle */
+  OSS_SPINL_HANDLE slHdl;			/* spin lock handle */
   CHAMELEONV2_INFO	chamInfo;		/* global chameleon device info */
 } BBIS_HANDLE;
 
@@ -970,6 +972,7 @@ static int32 CHAMELEON_Init(
     }
   }
 
+#ifdef NOSPINLOCKTEST
   /*------------------------------+
     |  create spinlock              |
     +------------------------------*/
@@ -980,6 +983,10 @@ static int32 CHAMELEON_Init(
 		BBNAME, status ));
     return( Cleanup(h,status));
   }
+#else
+  spinLockIsrInit( &h->slHdl, 0 );
+#endif
+
 
   /* store current devCount value to ignore repeated calls of *_BrdInit 
    * starting at updated count 
@@ -2091,6 +2098,7 @@ static int32 CHAMELEON_IrqEnable(
 	  slotShift  -= 32;
 	}
 		
+#ifdef NOSPINLOCKTEST
       /* lock critical section by spinlock to be multiprocessor safe */
       error = OSS_SpinLockAcquire( h->osHdl, h->slHdl );
       if (error)
@@ -2100,6 +2108,10 @@ static int32 CHAMELEON_IrqEnable(
 		      BBNAME, functionName, error ));
 	  goto CLEANUP;
 	}
+
+#else
+      spinLockIsrTake( &h->slHdl );
+#endif
 
       /* GIRQ INUSE_STS bit available */
       if ( h->girqApiVersion ) { 
@@ -2179,7 +2191,6 @@ static int32 CHAMELEON_IrqEnable(
       OSS_IrqRestore( h->osHdl, h->irqHdl, oldState );
 #endif /* BBIS_DONT_USE_IRQ_MASKR */
 
-
       /* GIRQ INUSE_STS bit available */
       if ( h->girqApiVersion ) { 
 			
@@ -2195,6 +2206,7 @@ static int32 CHAMELEON_IrqEnable(
 		  BBNAME, functionName ));
       }
 
+#ifdef NOSPINLOCKTEST
       /* release spinlock */
       error = OSS_SpinLockRelease(h->osHdl, h->slHdl);
       if (error) 
@@ -2204,6 +2216,9 @@ static int32 CHAMELEON_IrqEnable(
 		      BBNAME, functionName, error ));
 	  goto CLEANUP;
 	}
+#else
+     spinLockIsrGive( &h->slHdl );
+#endif
 
       DBGWRT_1((DBH, "BB - %s%s: slot=%d enable=%d GIRQ @%08p is %08x slotShift %d\n", BBNAME,functionName,
 		slot, enable, h->girqPhysAddr+BBCHAM_GIRQ_IRQ_EN+offs, irqenLittleEndian, slotShift ));
@@ -2397,7 +2412,7 @@ static int32 CHAMELEON_GetMAddr(
 			
       DBGWRT_3((DBH, "BB - %s_GetMAddr: conventional address mode\n",BBNAME));
 			
-    } else { // for address mode MDIS_MA_BB_INFO_PTR, return whole chameleon unit
+    } else { /* for address mode MDIS_MA_BB_INFO_PTR, return whole chameleon unit */
       *mAddr = ((BBIS_CHAM_GRP *)h->dev[mSlot])->dev[dataMode];
       *mSize = sizeof(CHAMELEONV2_UNIT);
 			
@@ -2584,6 +2599,7 @@ static int32 Cleanup(
   if (h->descHdl)
     DESC_Exit(&h->descHdl);
 
+#ifdef NOSPINLOCKTEST
   /* remove spinlock */
   if (h->slHdl) {
     error = OSS_SpinLockRemove(h->osHdl, &h->slHdl);
@@ -2592,6 +2608,7 @@ static int32 Cleanup(
 		  "Error 0x%0x!\n", BBNAME, error ));
     }
   }
+#endif
 
   /* cleanup debug */
   DBGEXIT((&DBH));
@@ -2907,7 +2924,7 @@ static int32 PciParseDev(
 
   if (pciDevNbr > 0x1f)
     {
-      // seperate the function number from the device number
+      /* separate the function number from the device number */
       pciDevFunc = pciDevNbr >> 5;
       pciMainDevNbr = (pciDevNbr & 0x0000001f);
     }
@@ -2988,7 +3005,7 @@ static int32 PciCfgErr(
   if (pciDevNbr > 0x1f)
     {
       /* device number contains function in upper 3 bit */
-      pciDevFunc = pciDevNbr >> 5;  // devNbr e.g. 0b 0101 1110
+      pciDevFunc = pciDevNbr >> 5;  /* devNbr e.g. 0b 0101 1110 */
       pciMainDevNbr = pciDevNbr & 0x0000001f;
     }
 
