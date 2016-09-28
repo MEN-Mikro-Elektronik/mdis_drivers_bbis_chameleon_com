@@ -393,8 +393,6 @@ static const char RCSid[]="$Id: bb_chameleon.c,v 1.48 2013/11/28 17:00:05 ts Exp
 #define DBH             h->debugHdl
 #define CHAMELEON_BBIS_DEBUG
 
-#undef NOSPINLOCKTEST
-
 /* ISA variant */
 #ifdef CHAM_ISA
 #	define BUSTYPE OSS_BUSTYPE_ISA
@@ -479,7 +477,6 @@ typedef struct {
   void*		dev[CHAMELEON_BBIS_MAX_DEVS];	/* info of module */
   u_int32 	devGotSize[CHAMELEON_BBIS_MAX_DEVS];/* mem allocated for each dev */
   int32		devCount;						/* num of slots occupied */
-
   u_int32		tblType;			/* 0=OSS_ADDRSPACE_MEM, 1=OSS_ADDRSPACE_IO */	
   u_int32		girqType;			/* 0=OSS_ADDRSPACE_MEM, 1=OSS_ADDRSPACE_IO */	
   char 		*girqPhysAddr;		/* GIRQ unit physical address */
@@ -488,20 +485,20 @@ typedef struct {
 #ifndef BBIS_DONT_USE_IRQ_MASKR
   OSS_IRQ_HANDLE	*irqHdl;		/* irq handle */
 #endif /* BBIS_DONT_USE_IRQ_MASKR */
-
   u_int32		autoEnum;			/* <>0: auomatic enumeration */
   u_int8      exclModCodes[MAX_EXCL_MODCODES]; /* excluded module codes */
   u_int32		exclModCodesNbr;		/* number of excluded module codes */
-  int32       devCountInit;           /* devCount value from *_Init for 
-					 multiple calls of *_BrdInit */
-  OSS_SPINL_HANDLE slHdl;			/* spin lock handle */
+  int32       			devCountInit;       /* devCount value from *_Init for multiple calls of *_BrdInit */
+  OSS_SPINL_HANDLE 		*slHdl;				/* spin lock handle */
+#ifdef VXWORKS
+  OSS_SPINL_HANDLE 		vxSpinlock;			/* vxWorks only: spinlock struct (not pointer to it!) */
+#endif
   CHAMELEONV2_INFO	chamInfo;		/* global chameleon device info */
 } BBIS_HANDLE;
 
 /* include files which need BBIS_HANDLE */
 #include <MEN/bb_entry.h>			/* bbis jumptable */
 #include <MEN/bb_chameleon.h>		/* chameleon bbis header file */
-
 
 /*-----------------------------------------+
   |  GLOBALS                                 |
@@ -972,10 +969,14 @@ static int32 CHAMELEON_Init(
     }
   }
 
-#ifdef NOSPINLOCKTEST
   /*------------------------------+
     |  create spinlock              |
-    +------------------------------*/
+    +-----------------------------*/
+
+#ifdef VXWORKS
+  h->slHdl = &h->vxSpinlock;
+#endif
+
   status = OSS_SpinLockCreate( h->osHdl, &h->slHdl);
   if (status) {
     DBGWRT_ERR((DBH, "*** BB - %s_Init: OSS_SpinLockCreate() failed! "
@@ -983,9 +984,6 @@ static int32 CHAMELEON_Init(
 		BBNAME, status ));
     return( Cleanup(h,status));
   }
-#else
-  spinLockIsrInit( &h->slHdl, 0 );
-#endif
 
 
   /* store current devCount value to ignore repeated calls of *_BrdInit 
@@ -2096,9 +2094,8 @@ static int32 CHAMELEON_IrqEnable(
 	  /* next address - irq enable has 64 bit */
 	  offs 		= 4;
 	  slotShift  -= 32;
-	}
-		
-#ifdef NOSPINLOCKTEST
+	}		
+
       /* lock critical section by spinlock to be multiprocessor safe */
       error = OSS_SpinLockAcquire( h->osHdl, h->slHdl );
       if (error)
@@ -2108,10 +2105,6 @@ static int32 CHAMELEON_IrqEnable(
 		      BBNAME, functionName, error ));
 	  goto CLEANUP;
 	}
-
-#else
-      spinLockIsrTake( &h->slHdl );
-#endif
 
       /* GIRQ INUSE_STS bit available */
       if ( h->girqApiVersion ) { 
@@ -2206,19 +2199,14 @@ static int32 CHAMELEON_IrqEnable(
 		  BBNAME, functionName ));
       }
 
-#ifdef NOSPINLOCKTEST
       /* release spinlock */
       error = OSS_SpinLockRelease(h->osHdl, h->slHdl);
       if (error) 
 	{
 	  DBGWRT_ERR((DBH, "*** BB - %s%s: OSS_SpinLockRelease() failed!"
-		      "Error 0x%0x\n", 
-		      BBNAME, functionName, error ));
+    			  "Error 0x%0x\n", BBNAME, functionName, error ));
 	  goto CLEANUP;
 	}
-#else
-     spinLockIsrGive( &h->slHdl );
-#endif
 
       DBGWRT_1((DBH, "BB - %s%s: slot=%d enable=%d GIRQ @%08p is %08x slotShift %d\n", BBNAME,functionName,
 		slot, enable, h->girqPhysAddr+BBCHAM_GIRQ_IRQ_EN+offs, irqenLittleEndian, slotShift ));
@@ -2599,7 +2587,6 @@ static int32 Cleanup(
   if (h->descHdl)
     DESC_Exit(&h->descHdl);
 
-#ifdef NOSPINLOCKTEST
   /* remove spinlock */
   if (h->slHdl) {
     error = OSS_SpinLockRemove(h->osHdl, &h->slHdl);
@@ -2608,7 +2595,6 @@ static int32 Cleanup(
 		  "Error 0x%0x!\n", BBNAME, error ));
     }
   }
-#endif
 
   /* cleanup debug */
   DBGEXIT((&DBH));
