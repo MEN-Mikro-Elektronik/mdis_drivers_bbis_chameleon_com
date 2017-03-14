@@ -477,8 +477,8 @@ typedef struct {
   void*		dev[CHAMELEON_BBIS_MAX_DEVS];	/* info of module */
   u_int32 	devGotSize[CHAMELEON_BBIS_MAX_DEVS];/* mem allocated for each dev */
   int32		devCount;						/* num of slots occupied */
-  u_int32		tblType;			/* 0=OSS_ADDRSPACE_MEM, 1=OSS_ADDRSPACE_IO */	
-  u_int32		girqType;			/* 0=OSS_ADDRSPACE_MEM, 1=OSS_ADDRSPACE_IO */	
+  u_int32		tblType;			/* 0=OSS_ADDRSPACE_MEM, 1=OSS_ADDRSPACE_IO */
+  u_int32		girqType;			/* 0=OSS_ADDRSPACE_MEM, 1=OSS_ADDRSPACE_IO */
   char 		*girqPhysAddr;		/* GIRQ unit physical address */
   char 		*girqVirtAddr;		/* GIRQ unit virtual address */
   u_int32		girqApiVersion;		/* GIRQ application feature register */
@@ -738,16 +738,16 @@ static int32 CHAMELEON_Init(
 
   /* PCI_DOMAIN_NUMBER - optional */
   status = DESC_GetUInt32( h->descHdl, 0, &h->pciDomainNbr, "PCI_DOMAIN_NUMBER");
-							 
+
   if ( status == ERR_DESC_KEY_NOTFOUND ) {
     /* default pci domain is 0 */
     h->pciDomainNbr = 0;
-  }					
+  }
 
 
   /* PCI_BUS_NUMBER - required if PCI_BUS_PATH not given  */
   status = DESC_GetUInt32( h->descHdl, 0, &h->pciBusNbr, "PCI_BUS_NUMBER");
-  
+
   if( status == ERR_DESC_KEY_NOTFOUND ){
     /* PCI_BUS_PATH - required if PCI_DEVICE_NUMBER not given */
     h->pciPathLen = MAX_PCI_PATH;
@@ -759,7 +759,7 @@ static int32 CHAMELEON_Init(
       return( Cleanup(h,status) );
     }
 
-#ifndef VXW_PCI_DOMAIN_SUPPORT 
+#ifndef VXW_PCI_DOMAIN_SUPPORT
     /* ts: tweak for F50P + vxW64. TODO: clean up when also supporting F50P on vxW69 !!! */
     DESC_GetUInt32( h->descHdl, 0, &mechSlot, "PCI_BUS_SLOT");
     h->pciDomainNbr = 0;
@@ -802,7 +802,7 @@ static int32 CHAMELEON_Init(
 
     /* PCI_BUS_SLOT - required if PCI_DEVICE_NUMBER not given */
     status = DESC_GetUInt32( h->descHdl, 0, &mechSlot, "PCI_BUS_SLOT");
-    
+
     if( status==ERR_DESC_KEY_NOTFOUND ){
       DBGWRT_ERR((DBH, "*** BB - %s_Init: Found neither Desc Key "
 		  "PCI_BUS_SLOT nor PCI_DEVICE_NUMBER !\n", BBNAME));
@@ -980,14 +980,14 @@ static int32 CHAMELEON_Init(
   status = OSS_SpinLockCreate( h->osHdl, &h->slHdl);
   if (status) {
     DBGWRT_ERR((DBH, "*** BB - %s_Init: OSS_SpinLockCreate() failed! "
-		"Error 0x%0x\n",	
+		"Error 0x%0x\n",
 		BBNAME, status ));
     return( Cleanup(h,status));
   }
 
 
-  /* store current devCount value to ignore repeated calls of *_BrdInit 
-   * starting at updated count 
+  /* store current devCount value to ignore repeated calls of *_BrdInit
+   * starting at updated count
    */
   h->devCountInit = h->devCount;
   return 0;
@@ -1045,17 +1045,17 @@ static int32 CHAMELEON_BrdInit(
   /* try to find mem mapped table */
   h->tblType = OSS_ADDRSPACE_MEM;
   chErr = h->chamFuncTbl[OSS_ADDRSPACE_MEM].InitPci( h->osHdl,
-						     OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr), 
-						     h->pciDevNbr, 
-                                                     h->pciFuncNbr, 
+						     OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr),
+						     h->pciDevNbr,
+                                                     h->pciFuncNbr,
                                                      &chamHdl );
-	
+
   if( chErr == CHAMELEONV2_TABLE_NOT_FOUND ){
     DBGWRT_2((DBH," no mem mapped table found, try to find io mapped table\n"));
     /* try to find io mapped table */
     h->tblType = OSS_ADDRSPACE_IO;
     chErr = h->chamFuncTbl[OSS_ADDRSPACE_IO].InitPci( h->osHdl,
-						      OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr), 
+						      OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr),
 						      h->pciDevNbr, h->pciFuncNbr, &chamHdl );
   }
 
@@ -1111,7 +1111,7 @@ static int32 CHAMELEON_BrdInit(
 #endif /* DBG */
 
   /* restore current devCount value to init value counter.
-   * *_BrdInit may be called multiple times and shall be started at equal counter 
+   * *_BrdInit may be called multiple times and shall be started at equal counter
    */
   h->devCount = h->devCountInit;
 
@@ -1452,11 +1452,11 @@ static int32 CHAMELEON_BrdInit(
 	h->girqApiVersion = OSS_SWAP32( h->girqApiVersion );
 #endif
 	/* get api version from topmost byte */
-	h->girqApiVersion = h->girqApiVersion >> BBCHAM_GIRQ_API_VER_OFF; 
+	h->girqApiVersion = h->girqApiVersion >> BBCHAM_GIRQ_API_VER_OFF;
 
 	DBGWRT_1((DBH, "%s_BrdInit: girq found at phys %08p virt %08p - "
-		  "IRQEN current setting %08x %08x, api version 0x%08x\n", 
-		  BBNAME, h->girqPhysAddr, h->girqVirtAddr, irqenLower, 
+		  "IRQEN current setting %08x %08x, api version 0x%08x\n",
+		  BBNAME, h->girqPhysAddr, h->girqVirtAddr, irqenLower,
 		  irqenUpper, h->girqApiVersion ));
       }
     else
@@ -1527,9 +1527,10 @@ static int32 CHAMELEON_BrdExit(
       /* free dev[] in group */
       lGrp = (BBIS_CHAM_GRP*)h->dev[i];
       for( j = 0; j < CHAMELEON_BBIS_MAX_DEVS; j++ ) {
-	if( lGrp->dev[j] ){
-	  OSS_MemFree(h->osHdl, lGrp->dev[j], lGrp->devGotSize[j]);
-	}
+    	  if( lGrp->dev[j] ){
+    		  OSS_MemFree(h->osHdl, lGrp->dev[j], lGrp->devGotSize[j]);
+    		  lGrp->dev[j] = NULL;
+    	  }
       }
     }
   }
@@ -1607,7 +1608,7 @@ static int32 CHAMELEON_Exit(
  *                The BBIS_BRDINFO_ADDRSPACE code returns the address
  *                characteristic (OSS_ADDRSPACE_MEM/OSS_ADDRSPACE_IO)
  *                of the specified device.
- *                The 2011 introduced BBIS_CFGINFO_ADDRSPACE code for 
+ *                The 2011 introduced BBIS_CFGINFO_ADDRSPACE code for
  *                <BBIS>_CfgInfo can be used to specify the address
  *                characteristic of the specified device with the help
  *                of the board handle.
@@ -1848,7 +1849,7 @@ static int32 CHAMELEON_CfgInfo(
 #endif /* CHAM_ISA */
 
       break;
-    }	
+    }
 
     /* interrupt information */
   case BBIS_CFGINFO_IRQ:
@@ -1882,7 +1883,7 @@ static int32 CHAMELEON_CfgInfo(
 	if( chamTblInt == 0x3F ){
 	  *mode = BBIS_IRQ_NONE;
 	}
-	/* using irq level from chameleon table (may be overwritten below!) */ 
+	/* using irq level from chameleon table (may be overwritten below!) */
 	else {
 	  *level = chamTblInt;
 	}
@@ -1909,14 +1910,14 @@ static int32 CHAMELEON_CfgInfo(
 	/* interrupt used? */
 	if( *mode != BBIS_IRQ_NONE ){
 
-	  // share always (for ser IRQs at SC24 LPC bus) 
+	  // share always (for ser IRQs at SC24 LPC bus)
 	  *mode = BBIS_IRQ_SHARED;
 
 	  /* maybe an alternative? */
 #if 0
 	  /* non shared legacy IRQ0..15? */
 	  if( *level < 16 )
-	    *mode = BBIS_IRQ_EXCLUSIVE;					
+	    *mode = BBIS_IRQ_EXCLUSIVE;
 	  /* shared IRQ16..max */
 	  else
 	    *mode = BBIS_IRQ_SHARED;
@@ -1932,8 +1933,8 @@ static int32 CHAMELEON_CfgInfo(
 	 * Take irq level from PCI config space instead from
 	 * table inside FPGA (normal use case, except e.g. EM08).
 	 */
-	OSS_PciGetConfig( h->osHdl, 
-			  OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr), 
+	OSS_PciGetConfig( h->osHdl,
+			  OSS_MERGE_BUS_DOMAIN(h->pciBusNbr, h->pciDomainNbr),
 			  h->pciDevNbr, 0, OSS_PCI_INTERRUPT_LINE, (int32*)level );
 
 	/* no interrupt available ? */
@@ -1985,12 +1986,12 @@ static int32 CHAMELEON_CfgInfo(
        		status = ERR_BBIS_ILL_SLOT;
     		break;
       }
-			
+
       if (h->devId[mSlot] == CHAMELEON_NO_DEV ) {
     	  status = ERR_BBIS_ILL_SLOT;
     	  break;
-      } 
-			
+      }
+
       if( h->devId[mSlot] == CHAMELEON_BBIS_GROUP )
 	/* use first module of group */
 	unitP = (CHAMELEONV2_UNIT*)(((BBIS_CHAM_GRP*)h->dev[mSlot])->dev[0]);
@@ -2094,20 +2095,20 @@ static int32 CHAMELEON_IrqEnable(
 	  /* next address - irq enable has 64 bit */
 	  offs 		= 4;
 	  slotShift  -= 32;
-	}		
+	}
 
       /* lock critical section by spinlock to be multiprocessor safe */
       error = OSS_SpinLockAcquire( h->osHdl, h->slHdl );
       if (error)
 	{
 	  DBGWRT_ERR((DBH, "*** BB - %s%s: OSS_SpinLockAcquire() failed!"
-		      "Error 0x%0x\n", 
+		      "Error 0x%0x\n",
 		      BBNAME, functionName, error ));
 	  goto CLEANUP;
 	}
 
       /* GIRQ INUSE_STS bit available */
-      if ( h->girqApiVersion ) { 
+      if ( h->girqApiVersion ) {
 	u_int32 girqCount = 0;
 
 	/* check INUSE bit */
@@ -2116,7 +2117,7 @@ static int32 CHAMELEON_IrqEnable(
 	girqInUse = OSS_SWAP32( girqInUse );
 #endif
 	/* GIRQ INUSE bit is 0 when no other device uses the register
-	 * if bit is 1 wait until released 
+	 * if bit is 1 wait until released
 	 * release INUSE bit by writing 1 to the register
 	 */
 	while ( (girqInUse & BBCHAM_GIRQ_IN_USE_BIT) )
@@ -2148,7 +2149,7 @@ static int32 CHAMELEON_IrqEnable(
 	  goto CLEANUP;
 	}
 
-      /* lock critical section - disable context change i.e. to VxWorks intEnable() in the same FPGA 
+      /* lock critical section - disable context change i.e. to VxWorks intEnable() in the same FPGA
        * IRQ_MASK for old designs i.e. EM1 VxWorks this BBIS driver and interrupt controller driver
        */
       oldState = OSS_IrqMaskR(  h->osHdl, h->irqHdl );
@@ -2179,14 +2180,14 @@ static int32 CHAMELEON_IrqEnable(
 
       _MWRITE_D32(h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs, irqen);
 
-#ifndef BBIS_DONT_USE_IRQ_MASKR   
+#ifndef BBIS_DONT_USE_IRQ_MASKR
       /* unlock critical section */
       OSS_IrqRestore( h->osHdl, h->irqHdl, oldState );
 #endif /* BBIS_DONT_USE_IRQ_MASKR */
 
       /* GIRQ INUSE_STS bit available */
-      if ( h->girqApiVersion ) { 
-			
+      if ( h->girqApiVersion ) {
+
 	/* set current bit for release */
 	girqInUse = BBCHAM_GIRQ_IN_USE_BIT;
 #ifdef _BIG_ENDIAN_
@@ -2201,7 +2202,7 @@ static int32 CHAMELEON_IrqEnable(
 
       /* release spinlock */
       error = OSS_SpinLockRelease(h->osHdl, h->slHdl);
-      if (error) 
+      if (error)
 	{
 	  DBGWRT_ERR((DBH, "*** BB - %s%s: OSS_SpinLockRelease() failed!"
     			  "Error 0x%0x\n", BBNAME, functionName, error ));
@@ -2381,7 +2382,7 @@ static int32 CHAMELEON_GetMAddr(
   if ( h->devId[mSlot] == CHAMELEON_NO_DEV )
 	  return ERR_BBIS_ILL_SLOT;
 
-  /* group device? */ 
+  /* group device? */
   if( h->devId[mSlot] == CHAMELEON_BBIS_GROUP ) {
     if( ( addrMode != MDIS_MA_CHAMELEON ) && ( addrMode != MDIS_MA_BB_INFO_PTR ) ) {
       DBGWRT_ERR((DBH,"*** %s_GetMAddr: ill addr mode=0x%x for group!\n",
@@ -2393,21 +2394,21 @@ static int32 CHAMELEON_GetMAddr(
 		  BBNAME, dataMode));
       return ERR_BBIS_ILL_DATAMODE;
     }
-		
+
     if ( addrMode == MDIS_MA_CHAMELEON ) {
       *mAddr = ((CHAMELEONV2_UNIT*)((BBIS_CHAM_GRP *)h->dev[mSlot])->dev[dataMode])->addr;
       *mSize = ((CHAMELEONV2_UNIT*)((BBIS_CHAM_GRP *)h->dev[mSlot])->dev[dataMode])->size;
-			
+
       DBGWRT_3((DBH, "BB - %s_GetMAddr: conventional address mode\n",BBNAME));
-			
+
     } else { /* for address mode MDIS_MA_BB_INFO_PTR, return whole chameleon unit */
       *mAddr = ((BBIS_CHAM_GRP *)h->dev[mSlot])->dev[dataMode];
       *mSize = sizeof(CHAMELEONV2_UNIT);
-			
+
       DBGWRT_3((DBH, "BB - %s_GetMAddr: cham unit address mode; devId: %d, size: 0x%08x \n",
 		BBNAME,((CHAMELEONV2_UNIT*)(*mAddr))->devId,((CHAMELEONV2_UNIT*)(*mAddr))->size));
     }
-			
+
     /* single device */
   } else {
     if( ((addrMode == MDIS_MA_CHAMELEON) || (addrMode == MDIS_MA_BB_INFO_PTR)) &&
@@ -2419,11 +2420,11 @@ static int32 CHAMELEON_GetMAddr(
     if ( addrMode == MDIS_MA_BB_INFO_PTR ) {
       *mAddr = h->dev[mSlot];
       *mSize = sizeof(CHAMELEONV2_UNIT);
-			
+
     } else {
       *mAddr = ((CHAMELEONV2_UNIT*)h->dev[mSlot])->addr;
       *mSize = ((CHAMELEONV2_UNIT*)h->dev[mSlot])->size;
-			
+
       DBGWRT_3((DBH, "BB - %s_GetMAddr: conventional address mode\n",BBNAME));
     }
   }
@@ -2612,6 +2613,7 @@ static int32 Cleanup(
 
   /* release memory for the board handle */
   OSS_MemFree( h->osHdl, (int8*)h, h->ownMemSize);
+  h = NULL;
 
   /*------------------------------+
     |  return error code            |
@@ -2809,35 +2811,35 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
 
     pciDevNbr = h->pciPath[i];
 
-    if ( ( i==0 ) 
-#ifdef VXW_PCI_DOMAIN_SUPPORT 
-	 && ( 0 != h->pciDomainNbr ) 
+    if ( ( i==0 )
+#ifdef VXW_PCI_DOMAIN_SUPPORT
+	 && ( 0 != h->pciDomainNbr )
 #endif
 	 ) {
-      /* as we do not know the numbering order of busses on pci domains, 
-	 try to find the device on all busses instead of looking for the 
+      /* as we do not know the numbering order of busses on pci domains,
+	 try to find the device on all busses instead of looking for the
 	 first bus on the domain  */
       for (pciBusNbr=0; pciBusNbr<0xff; pciBusNbr++) {
-	
-	error = PciParseDev( h, 
-			     OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr), 
+
+	error = PciParseDev( h,
+			     OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr),
 			     h->pciPath[0], &vendorID, &deviceID, &headerType,
 			     &secondBus );
-	if ( error == ERR_SUCCESS && vendorID != 0xffff && deviceID != 0xffff ) 
+	if ( error == ERR_SUCCESS && vendorID != 0xffff && deviceID != 0xffff )
 	  break; /* found device */
       }
-			
+
       if ( error != ERR_SUCCESS ) { /* device not found */
 	DBGWRT_ERR((DBH,"*** BB - %s: first device 0x%02x in pci bus path "
 		    "not found on domain %d!\n",
 		    BBNAME, h->pciPath[0], h->pciDomainNbr ));
-	return error;               
-      }    
+	return error;
+      }
     } else {
       /* parse device only once */
-      if( (error = PciParseDev( h, 
-                                OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr ), 
-				pciDevNbr, 
+      if( (error = PciParseDev( h,
+                                OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr ),
+				pciDevNbr,
                                 &vendorID, &deviceID, &headerType, &secondBus )))
 	return error;
     }
@@ -2848,7 +2850,7 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
       return ERR_BBIS_NO_CHECKLOC;
     }
 
-#ifdef VXW_PCI_DOMAIN_SUPPORT 
+#ifdef VXW_PCI_DOMAIN_SUPPORT
     /*--- device is present, is it a bridge ? ---*/
     if( (headerType & ~OSS_PCI_HEADERTYPE_MULTIFUNCTION) != OSS_PCI_HEADERTYPE_BRIDGE_TYPE ){
       DBGWRT_ERR((DBH,"*** BB - %s:ParsePciPath: Device is not a bridge!"
@@ -2857,7 +2859,7 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
 		  deviceID ));
 
       return ERR_BBIS_NO_CHECKLOC;
-    } 
+    }
 
     /*--- it is a bridge, determine its secondary bus number ---*/
     DBGWRT_2((DBH, " domain %d bus %d dev 0x%x: vend=0x%x devId=0x%x second bus %d\n",
@@ -2916,12 +2918,12 @@ static int32 PciParseDev(
     }
 
   /*--- check to see if device present ---*/
-  error = OSS_PciGetConfig( h->osHdl,            		
+  error = OSS_PciGetConfig( h->osHdl,
 			    pciBusNbr, pciMainDevNbr, pciDevFunc,
 			    OSS_PCI_VENDOR_ID, vendorIDP );
 
   if( error == 0 )
-    error = OSS_PciGetConfig( h->osHdl, 
+    error = OSS_PciGetConfig( h->osHdl,
 			      pciBusNbr, pciMainDevNbr, pciDevFunc,
 			      OSS_PCI_DEVICE_ID, deviceIDP );
 
