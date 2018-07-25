@@ -1085,7 +1085,7 @@ static int32 CHAMELEON_BrdInit(
   /* using mem/io function table according specified address type
      (DEVICE_ADDR_IO desc key) */
   if( (chErr = h->chamFuncTbl[h->tblType].InitInside( h->osHdl,
-						      (void*)h->isaAddr, &chamHdl ))
+						      (void*)(U_INT32_OR_64)(h->isaAddr), &chamHdl ))
       != CHAMELEON_OK )
     {
       DBGWRT_ERR((DBH, "*** %s_BrdInit: CHAM_InitInside error 0x%x! "
