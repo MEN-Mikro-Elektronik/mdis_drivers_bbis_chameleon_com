@@ -9,17 +9,6 @@
  *
  *  Description: io mapped access
  *
- *-------------------------------[ History ]---------------------------------
- *
- * $Log: io_access.c,v $
- * Revision 1.2  2011/04/01 10:50:24  CRuff
- * R: definition of MAC_IO_MAPPED caused error during linux build because
- *    MAC_MEM_MAPPED is defined by linux build system
- * M: undef MAC_MEM_MAPPED if necessary before defining MAC_IO_MAPPED
- *
- * Revision 1.1  2011/01/19 11:02:46  dpfeuffer
- * Initial Revision
- *
  *---------------------------------------------------------------------------
  # Copyright (c) 2011 MEN Mikro Elektronik GmbH. All rights reserved.
  ******************************************************************************/
