@@ -142,7 +142,7 @@ static const char RCSid[]="$Id: bb_chameleon.c,v 1.48 2013/11/28 17:00:05 ts Exp
 #include <MEN/mdis_api.h>   /* MDIS global defs               */
 #include <MEN/chameleon.h>  /* chameleon defs                 */
 
-#ifndef MAC_MEM_MAPPED
+#if !defined(MAC_MEM_MAPPED) && !defined(MAC_IO_MAPPED)
 #define MAC_MEM_MAPPED
 #endif
 #include <MEN/maccess.h>
