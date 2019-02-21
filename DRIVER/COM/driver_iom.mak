@@ -7,15 +7,8 @@
 #    Description: Makefile definitions for the CHAMELEON BBIS driver
 #                 (IO mapped version)
 #
-#---------------------------------[ History ]---------------------------------
-#
-#   $Log: driver_iom.mak,v $
-#   Revision 1.1  2005/02/16 15:34:43  ub
-#   Initial Revision
-#
-#
 #-----------------------------------------------------------------------------
-#   (c) Copyright 2004 by MEN mikro elektronik GmbH, Nuernberg, Germany
+#   Copyright (c) 2004-2019, MEN Mikro Elektronik GmbH
 #*****************************************************************************
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

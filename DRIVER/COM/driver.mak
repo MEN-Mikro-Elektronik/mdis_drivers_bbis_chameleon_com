@@ -6,36 +6,8 @@
 #  
 #    Description: Makefile definitions for the CHAMELEON BBIS driver
 #                      
-#---------------------------------[ History ]---------------------------------
-#
-#   $Log: driver.mak,v $
-#   Revision 1.7  2012/02/08 09:20:15  dpfeuffer
-#   R: rollback of LIBSRC\CHAMELEON\COM\library.mak
-#   M: undo of last modification
-#
-#   Revision 1.6  2012/02/06 11:38:34  dpfeuffer
-#   R: LIBSRC\CHAMELEON\COM\library.mak: added CHAM_VARIANT=MEM changes
-#      function names of CHAM_ModCodeToDevId and CHAM_DevIdToName
-#   M: CHAM_VARIANT=MEM added here too to resolve external symbols
-#
-#   Revision 1.5  2011/01/19 11:02:48  dpfeuffer
-#   R: chameleon BBIS shall support mem and io mapped chameleon units
-#   M: libs, switches and sources modified
-#
-#   Revision 1.4  2007/06/12 10:22:56  aw
-#   changed library sequence
-#
-#   Revision 1.3  2004/06/21 16:02:06  dpfeuffer
-#   cosmetics
-#
-#   Revision 1.2  2004/05/24 10:25:26  dpfeuffer
-#   chameleonsub.l now in driver_os9.mak
-#
-#   Revision 1.1  2003/02/03 10:44:37  kp
-#   Initial Revision
-#
 #-----------------------------------------------------------------------------
-#   (c) Copyright 2003 by MEN mikro elektronik GmbH, Nuernberg, Germany 
+#   Copyright (c) 2003-2019, MEN Mikro Elektronik GmbH
 #*****************************************************************************
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

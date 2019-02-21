@@ -6,18 +6,8 @@
 #  
 #    Description: Makefile definitions for the CHAMELEON BBIS driver
 #                      
-#---------------------------------[ History ]---------------------------------
-#
-#   $Log: driver_os9.mak,v $
-#   Revision 1.2  2011/01/19 11:02:57  dpfeuffer
-#   R: chameleon BBIS shall support mem and io mapped chameleon units
-#   M: switches and sources modified, ToDo: MAK_LIBS must be extended
-#
-#   Revision 1.1  2004/05/24 10:25:28  dpfeuffer
-#   Initial Revision
-#
 #-----------------------------------------------------------------------------
-#   (c) Copyright 2003 by MEN mikro elektronik GmbH, Nuernberg, Germany 
+#   Copyright (c) 2003-2019, MEN Mikro Elektronik GmbH
 #*****************************************************************************
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

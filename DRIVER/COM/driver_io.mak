@@ -6,22 +6,8 @@
 #
 #    Description: Makefile definitions for the CHAMELEON BBIS (io access)
 #
-#---------------------------------[ History ]---------------------------------
-#
-#   $Log: driver_io.mak,v $
-#   Revision 1.3  2011/01/19 11:02:50  dpfeuffer
-#   R: still support io variant build
-#   M: libs, switches and sources modified
-#
-#   Revision 1.2  2009/10/14 09:39:24  CKauntz
-#   R: Linker Error: cant find CHAM_InitMem
-#   M: Added CHAMV2_VARIANT switch to use CHAM_InitIo
-#
-#   Revision 1.1  2005/07/27 12:54:39  dpfeuffer
-#   Initial Revision
-#
 #-----------------------------------------------------------------------------
-#   (c) Copyright by MEN mikro elektronik GmbH, Nuernberg, Germany
+#   Copyright (c) 2019, MEN Mikro Elektronik GmbH
 #*****************************************************************************
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

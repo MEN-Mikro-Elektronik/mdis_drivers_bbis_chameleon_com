@@ -7,22 +7,8 @@
 #    Description: Makefile definitions for the CHAMELEON BBIS
 #                 (IRQ from PCI-tbl, io access)
 #
-#---------------------------------[ History ]---------------------------------
-#
-#   $Log: driver_pcitbl_io.mak,v $
-#   Revision 1.3  2011/01/19 11:02:55  dpfeuffer
-#   R: still support io variant build
-#   M: libs, switches and sources modified
-#
-#   Revision 1.2  2010/05/21 09:58:38  ts
-#   R: IOmapped GPIO on F11S not accessible although IO .mak versions used
-#   M: added CHAMV2_Variant define Io as in driver_io.mak
-#
-#   Revision 1.1  2005/08/03 11:22:43  dpfeuffer
-#   Initial Revision
-#
 #-----------------------------------------------------------------------------
-#   (c) Copyright by MEN mikro elektronik GmbH, Nuernberg, Germany
+#   Copyright (c) 2019, MEN Mikro Elektronik GmbH
 #*****************************************************************************
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

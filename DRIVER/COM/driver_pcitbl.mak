@@ -8,28 +8,8 @@
 #                 Compile chameleon driver to read IRQ to use from
 #                 PCI config space instead using the table inside FPGA.
 #                      
-#---------------------------------[ History ]---------------------------------
-#
-#   $Log: driver_pcitbl.mak,v $
-#   Revision 1.4  2012/02/08 09:20:24  dpfeuffer
-#   R: rollback of LIBSRC\CHAMELEON\COM\library.mak
-#   M: undo of last modification
-#
-#   Revision 1.3  2012/02/06 11:38:46  dpfeuffer
-#   R: LIBSRC\CHAMELEON\COM\library.mak: added CHAM_VARIANT=MEM changes
-#      function names of CHAM_ModCodeToDevId and CHAM_DevIdToName
-#   M: CHAM_VARIANT=MEM added here too to resolve external symbols
-#
-#   Revision 1.2  2011/01/19 11:02:52  dpfeuffer
-#   R: chameleon BBIS shall support mem and io mapped chameleon units
-#   M: libs, switches and sources modified
-#
-#   Revision 1.1  2004/06/08 16:05:41  ub
-#   Initial Revision
-#
-#
 #-----------------------------------------------------------------------------
-#   (c) Copyright 2004 by MEN mikro elektronik GmbH, Nuernberg, Germany 
+#   Copyright (c) 2004-2019, MEN Mikro Elektronik GmbH
 #*****************************************************************************
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
