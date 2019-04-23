@@ -844,7 +844,7 @@ static int32 CHAMELEON_BrdInit(
     }
 #endif /* CHAM_ISA */
 
-#if DBG
+#ifdef DBG
   {
     /*
      * DBG: Always print chameleon-V2 table info about
