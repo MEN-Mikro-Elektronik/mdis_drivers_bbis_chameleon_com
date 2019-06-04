@@ -4,8 +4,6 @@
  *      Project: CHAMELEON board handler
  *
  *       Author: kp
- *        $Date: 2007/03/01 16:07:11 $
- *    $Revision: 1.2 $
  *
  *  Description: Generic CHAMELEON Base Board handler
  *
@@ -124,7 +122,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-static const char RCSid[]="$Id: sc15_test_bb_chameleon.c,v 1.2 2007/03/01 16:07:11 SYao Exp $";
 
 #define _NO_BBIS_HANDLE		/* bb_defs.h: don't define BBIS_HANDLE struct */
 
@@ -232,6 +229,8 @@ typedef struct {
 /* include files which need BBIS_HANDLE */
 #include <MEN/bb_entry.h>	/* bbis jumptable		*/
 #include <MEN/bb_chameleon.h>		/* PCI bbis header file	*/
+
+static const char IdentString[]=MENT_XSTR(MAK_REVISION);
 
 
 /*-----------------------------------------+
@@ -1489,9 +1488,7 @@ static int32 CHAMELEON_Unused( void )		/* nodoc */
  ****************************************************************************/
 static char* Ident( void )		/* nodoc */
 {
-	return (
-		"CHAMELEON - "
-		"  Base Board Handler: $Id: sc15_test_bb_chameleon.c,v 1.2 2007/03/01 16:07:11 SYao Exp $" );
+	return( (char*) IdentString );
 }
 
 /********************************* Cleanup **********************************

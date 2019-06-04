@@ -4,8 +4,6 @@
  *      Project: CHAMELEON board handler
  *
  *       Author: dieter.pfeuffer@men.de
- *        $Date: 2011/04/01 10:50:24 $
- *    $Revision: 1.2 $
  *
  *  Description: io mapped access
  *

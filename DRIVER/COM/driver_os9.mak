@@ -1,8 +1,6 @@
 #***************************  M a k e f i l e  *******************************
 #  
 #         Author: kp
-#          $Date: 2011/01/19 11:02:57 $
-#      $Revision: 1.2 $
 #  
 #    Description: Makefile definitions for the CHAMELEON BBIS driver
 #                      
@@ -24,6 +22,10 @@
 
 
 MAK_NAME=chameleon
+# the next line is updated during the MDIS installation
+STAMPED_REVISION="mdis_drivers_bbis_chameleon_com_01_74-1-gce185b3-dirty_2019-04-23"
+
+DEF_REVISION=MAK_REVISION=$(STAMPED_REVISION)
 
 ##!!! chameleonsub.l is OS-9 specific!
 ## ToDo: chameleonsub_io.l must be created and added! 
@@ -32,7 +34,8 @@ MAK_LIBS=$(LIB_PREFIX)$(MEN_LIB_DIR)/desc$(LIB_SUFFIX)	\
          $(LIB_PREFIX)$(MEN_LIB_DIR)/chameleonsub.l \
 	 	 $(LIB_PREFIX)$(MEN_LIB_DIR)/dbg$(LIB_SUFFIX)
 
-MAK_SWITCH=	 	 
+MAK_SWITCH=	 	  \
+		$(SW_PREFIX)$(DEF_REVISION)
 
 MAK_INCL=$(MEN_INC_DIR)/bb_chameleon.h	\
 		 $(MEN_INC_DIR)/bb_defs.h	\

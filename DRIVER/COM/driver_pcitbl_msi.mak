@@ -25,6 +25,10 @@
 
 
 MAK_NAME=chameleon_pcitbl_msi
+# the next line is updated during the MDIS installation
+STAMPED_REVISION="mdis_drivers_bbis_chameleon_com_01_74-1-gce185b3-dirty_2019-04-23"
+
+DEF_REVISION=MAK_REVISION=$(STAMPED_REVISION)
 
 MAK_LIBS=$(LIB_PREFIX)$(MEN_LIB_DIR)/desc$(LIB_SUFFIX)	\
          $(LIB_PREFIX)$(MEN_LIB_DIR)/oss$(LIB_SUFFIX)	\
@@ -33,6 +37,7 @@ MAK_LIBS=$(LIB_PREFIX)$(MEN_LIB_DIR)/desc$(LIB_SUFFIX)	\
 	 $(LIB_PREFIX)$(MEN_LIB_DIR)/dbg$(LIB_SUFFIX)
 
 MAK_SWITCH=$(SW_PREFIX)CHAMELEON_USE_PCITABLE \
+		$(SW_PREFIX)$(DEF_REVISION) \
 	   $(SW_PREFIX)CHAMELEON_USE_A21_MSI
 
 MAK_INCL=$(MEN_INC_DIR)/bb_chameleon.h	\
