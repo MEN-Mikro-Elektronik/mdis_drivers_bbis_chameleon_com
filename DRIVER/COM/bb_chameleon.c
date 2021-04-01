@@ -1915,31 +1915,57 @@ static int32 CHAMELEON_IrqEnable(
        */
       oldState = OSS_IrqMaskR(  h->osHdl, h->irqHdl );
 #endif /* BBIS_DONT_USE_IRQ_MASKR */
-      /* set/reset slot corresponding irq enable bit */
-      _MREAD_D32(irqen, h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs);
+
+      /* Verify and re-write if BBCHAM_GIRQ_IRQ_EN has changed in the meantime
+       * This problem occured with async use of vxbmengirq, which can overwrite the BBCHAM_GIRQ_IRQ_EN register
+       */
+      u_int32 irqen_readback = 0x00000000;
+      int i = 0;
+      for(i=0; i<10; i++)
+      {
+          /* set/reset slot corresponding irq enable bit */
+          _MREAD_D32(irqen, h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs);
 
 #ifdef	_BIG_ENDIAN_
-      irqenLittleEndian = OSS_SWAP32( irqen );
+          irqenLittleEndian = OSS_SWAP32( irqen );
 #else
-      irqenLittleEndian = irqen;
+          irqenLittleEndian = irqen;
 #endif
 
-      if( enable )
-	{
-	  irqenLittleEndian |= (0x00000001 << (slotShift));
-	}
-      else
-	{
-	  irqenLittleEndian &= ~(0x00000001 << (slotShift));
-	}
+          if( enable )
+          {
+	    irqenLittleEndian |= (0x00000001 << (slotShift));
+          }
+          else
+          {
+	    irqenLittleEndian &= ~(0x00000001 << (slotShift));
+	  }
 
 #ifdef _BIG_ENDIAN_
-      irqen = OSS_SWAP32( irqenLittleEndian );
+          irqen = OSS_SWAP32( irqenLittleEndian );
 #else
-      irqen = irqenLittleEndian;
+          irqen = irqenLittleEndian;
 #endif
 
-      _MWRITE_D32(h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs, irqen);
+          _MWRITE_D32(h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs, irqen);
+
+          /* wait and verify */
+	  OSS_MikroDelay(h->osHdl, 100 );
+	   _MREAD_D32(irqen_readback, h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs);
+
+	  if( irqen_readback == irqen )
+	  {
+	    break;
+	  }
+	  else
+	  {
+            DBGWRT_ERR((DBH, "*** BB - %s%s: BBCHAM_GIRQ_IRQ_EN has been overwritten, retry #%d\n", BBNAME,functionName, i ));
+	  }
+      }
+      if( i >= 10 )
+      {
+        DBGWRT_ERR((DBH, "*** BB - %s%s: unable to set BBCHAM_GIRQ_IRQ_EN correctly!\n", BBNAME,functionName));
+      }
 
 #ifndef BBIS_DONT_USE_IRQ_MASKR
       /* unlock critical section */
