@@ -241,9 +241,6 @@ typedef struct {
   char 		*girqPhysAddr;		/* GIRQ unit physical address */
   char 		*girqVirtAddr;		/* GIRQ unit virtual address */
   u_int32		girqApiVersion;		/* GIRQ application feature register */
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-  OSS_IRQ_HANDLE	*irqHdl;		/* irq handle */
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
   u_int32		autoEnum;			/* <>0: auomatic enumeration */
   u_int8      exclModCodes[MAX_EXCL_MODCODES]; /* excluded module codes */
   u_int32		exclModCodesNbr;		/* number of excluded module codes */
@@ -322,9 +319,6 @@ static int32 PciCfgErr(
 		       u_int32 reg );
 #endif /* CHAM_ISA */
 
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-static int32 CHAMELEON_SetIrqHandle( BBIS_HANDLE *h, OSS_IRQ_HANDLE *irqHdl );
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
 
 /**************************** CHAMELEON_GetEntry ***********************************
  *
@@ -353,12 +347,7 @@ extern void __BB_CHAMELEON_GetEntry( BBIS_ENTRY *bbisP )
   bbisP->irqEnable    =   CHAMELEON_IrqEnable;
   bbisP->irqSrvInit   =   CHAMELEON_IrqSrvInit;
   bbisP->irqSrvExit   =   CHAMELEON_IrqSrvExit;
-
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-  bbisP->setIrqHandle =   CHAMELEON_SetIrqHandle;
-#else /* BBIS_DONT_USE_IRQ_MASKR */
   bbisP->setIrqHandle =   NULL;
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
 
   bbisP->fkt14        =   CHAMELEON_Unused;
   /* exception handling */
@@ -1776,35 +1765,6 @@ static int32 CHAMELEON_CfgInfo(
   return status;
 }
 
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-/*************************** CHAMELEON_SetIrqHandle **************************
- *
- *  Description:  Set the irq handle for BBIS.
- *
- *---------------------------------------------------------------------------
- *  Input......:  h			pointer to board handle structure
- *                irqHdl    irq handle
- *  Output.....:  return    0 | ERR_BBIS_ILL_IRQPARAM
- *  Globals....:  ---
- ****************************************************************************/
-static int32 CHAMELEON_SetIrqHandle( BBIS_HANDLE *h, OSS_IRQ_HANDLE *irqHdl )
-{
-  int32 error = ERR_BBIS_ILL_IRQPARAM;
-
-  if( irqHdl )
-    {
-      h->irqHdl = irqHdl;
-      error = 0;
-    }
-  else
-    {
-      DBGWRT_ERR((DBH, "*** BB - %sSetIrqHandle: irqHdl is NULL\n", BBNAME ));
-    }
-
-  return( error );
-}
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
-
 /****************************** CHAMELEON_IrqEnable **************************
  *
  *  Description:  Chameleon BBIS Interrupt enable / disable for the unit.
@@ -1831,10 +1791,6 @@ static int32 CHAMELEON_IrqEnable(
 
   if( h->girqVirtAddr )
     {
-
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-      OSS_IRQ_STATE oldState;
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
 
       int			offs		= 0;
       u_int32		girqInUse	= 0; /* GIRQ hardware Spin Lock */
@@ -1900,22 +1856,6 @@ static int32 CHAMELEON_IrqEnable(
 		  BBNAME, functionName, girqCount ));
       }
 
-
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-      /* sanity check */
-      if( h->irqHdl == NULL )
-	{
-	  error = ERR_BBIS_ILL_IRQPARAM;
-	  DBGWRT_ERR((DBH, "*** BB - %s%s: SetIrqHandle must be called before\n", BBNAME,functionName ));
-	  goto CLEANUP;
-	}
-
-      /* lock critical section - disable context change i.e. to VxWorks intEnable() in the same FPGA
-       * IRQ_MASK for old designs i.e. EM1 VxWorks this BBIS driver and interrupt controller driver
-       */
-      oldState = OSS_IrqMaskR(  h->osHdl, h->irqHdl );
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
-
       /* Verify and re-write if BBCHAM_GIRQ_IRQ_EN has changed in the meantime
        * This problem occured with async use of vxbmengirq, which can overwrite the BBCHAM_GIRQ_IRQ_EN register
        */
@@ -1966,11 +1906,6 @@ static int32 CHAMELEON_IrqEnable(
       {
         DBGWRT_ERR((DBH, "*** BB - %s%s: unable to set BBCHAM_GIRQ_IRQ_EN correctly!\n", BBNAME,functionName));
       }
-
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-      /* unlock critical section */
-      OSS_IrqRestore( h->osHdl, h->irqHdl, oldState );
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
 
       /* GIRQ INUSE_STS bit available */
       if ( h->girqApiVersion ) {
