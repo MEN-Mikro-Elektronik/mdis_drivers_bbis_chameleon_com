@@ -1782,9 +1782,11 @@ static int32 CHAMELEON_IrqEnable(
 				 u_int32         enable )
 {
   DBGCMD(	static const char functionName[] = "_IrqEnable:"; )
-    int32	error = 0;
+  int32	error = 0;
   u_int32 irqen = 0x00000000;
   u_int32 irqenLittleEndian = 0x00000000;
+  u_int32 irqen_readback = 0x00000000;
+  int i = 0;
   int slotShift;
 
   DBGWRT_1((DBH, "BB - %s %s: slot=%d; enable=%d\n", BBNAME,functionName,slot,enable ));
@@ -1859,8 +1861,6 @@ static int32 CHAMELEON_IrqEnable(
       /* Verify and re-write if BBCHAM_GIRQ_IRQ_EN has changed in the meantime
        * This problem occured with async use of vxbmengirq, which can overwrite the BBCHAM_GIRQ_IRQ_EN register
        */
-      u_int32 irqen_readback = 0x00000000;
-      int i = 0;
       for(i=0; i<10; i++)
       {
           /* set/reset slot corresponding irq enable bit */
