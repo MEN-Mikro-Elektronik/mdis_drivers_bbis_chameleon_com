@@ -486,22 +486,37 @@ static int32 CHAMELEON_Init(
 #ifndef CHAM_ISA
   /*---- get PCI domain/bus/device number ----*/
 
-  /* PCI_DOMAIN_NUMBER - optional */
+  /* PCI_DOMAIN_NUMBER - optional (default: 0) */
   status = DESC_GetUInt32( h->descHdl, 0, &h->pciDomainNbr, "PCI_DOMAIN_NUMBER");
-
-  if ( status == ERR_DESC_KEY_NOTFOUND ) {
-    /* default pci domain is 0 */
-    h->pciDomainNbr = 0;
+  if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+    return( Cleanup(h,status) );
+  if(status!=ERR_DESC_KEY_NOTFOUND){
+    DBGWRT_3((DBH, " read PCI_DOMAIN_NUMBER=0x%x",h->pciDomainNbr));
   }
-
 
   /* PCI_BUS_NUMBER - required if PCI_BUS_PATH not given  */
   status = DESC_GetUInt32( h->descHdl, 0, &h->pciBusNbr, "PCI_BUS_NUMBER");
+  if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+    return( Cleanup(h,status) );
+  if(status!=ERR_DESC_KEY_NOTFOUND){
+    DBGWRT_3((DBH, " read PCI_BUS_NUMBER=0x%x",h->pciBusNbr));
+  }
 
   if( status == ERR_DESC_KEY_NOTFOUND ){
     /* PCI_BUS_PATH - required if PCI_DEVICE_NUMBER not given */
     h->pciPathLen = MAX_PCI_PATH;
     status = DESC_GetBinary( h->descHdl, (u_int8*)"", 0, h->pciPath, &h->pciPathLen, "PCI_BUS_PATH");
+    if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+      return( Cleanup(h,status) );
+#ifdef DBG
+    if(status!=ERR_DESC_KEY_NOTFOUND){
+      DBGWRT_3((DBH, " read PCI_BUS_PATH="));
+      for(i=0; i<h->pciPathLen; i++){
+        DBGWRT_3((DBH, "0x%x (dev=0x%x, func=0x%x)", h->pciPath[i], h->pciPath[i]&0x1f,  h->pciPath[i]>>5));
+      }
+      DBGWRT_3((DBH, "\n"));
+    }
+#endif
 
     if( status ){
       DBGWRT_ERR((DBH, "*** BB - %s_Init: Found neither Desc Key "
@@ -509,24 +524,19 @@ static int32 CHAMELEON_Init(
       return( Cleanup(h,status) );
     }
 
-#ifndef VXW_PCI_DOMAIN_SUPPORT
+#if ( defined(VXWORKS) && !defined(VXW_PCI_DOMAIN_SUPPORT) )
     /* ts: tweak for F50P + vxW64. TODO: clean up when also supporting F50P on vxW69 !!! */
+    DBGWRT_3((DBH, " CAUTION: strange VxWorks tweak from ts\n"));
     DESC_GetUInt32( h->descHdl, 0, &mechSlot, "PCI_BUS_SLOT");
     h->pciDomainNbr = 0;
     h->pciPathLen = 1;
     h->pciPath[0] = 0x11 - mechSlot;
+    DBGWRT_3((DBH, " PCI_BUS_PATH=0x%x", h->pciPath[0]));
 #endif
 
     /*--------------------------------------------------------+
       |  parse the PCI_PATH to determine bus number of devices  |
       +--------------------------------------------------------*/
-#ifdef DBG
-    DBGWRT_2((DBH, " PCI_PATH="));
-    for(i=0; i<h->pciPathLen; i++){
-      DBGWRT_2((DBH, "0x%x ", h->pciPath[i]));
-    }
-    DBGWRT_2((DBH, "\n"));
-#endif
     if( (status = ParsePciPath( h, &h->pciBusNbr )) )
       return( Cleanup(h,status));
 
@@ -544,14 +554,21 @@ static int32 CHAMELEON_Init(
   /* PCI_DEVICE_NUMBER - required if PCI_BUS_SLOT not given  */
   status = DESC_GetUInt32( h->descHdl, 0xffff, &h->pciDevNbr,
 			   "PCI_DEVICE_NUMBER");
-
   if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
     return( Cleanup(h,status) );
+  if(status!=ERR_DESC_KEY_NOTFOUND){
+    DBGWRT_3((DBH, " read PCI_DEVICE_NUMBER=0x%x",h->pciDevNbr));
+  }
 
   if(status==ERR_DESC_KEY_NOTFOUND){
 
     /* PCI_BUS_SLOT - required if PCI_DEVICE_NUMBER not given */
     status = DESC_GetUInt32( h->descHdl, 0, &mechSlot, "PCI_BUS_SLOT");
+    if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+      return( Cleanup(h,status) );
+    if(status!=ERR_DESC_KEY_NOTFOUND){
+      DBGWRT_3((DBH, " read PCI_BUS_SLOT=0x%x",mechSlot));
+    }
 
     if( status==ERR_DESC_KEY_NOTFOUND ){
       DBGWRT_ERR((DBH, "*** BB - %s_Init: Found neither Desc Key "
@@ -2531,29 +2548,37 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
 
     pciDevNbr = h->pciPath[i];
 
+#ifdef VXWORKS
     if ( ( i==0 )
-#ifdef VXW_PCI_DOMAIN_SUPPORT
+#	ifdef VXW_PCI_DOMAIN_SUPPORT
 	 && ( 0 != h->pciDomainNbr )
-#endif
+#	endif
 	 ) {
+#else
+    if ( ( i==0 ) && ( 0 != h->pciDomainNbr )) {
+#endif
       /* as we do not know the numbering order of busses on pci domains,
 	 try to find the device on all busses instead of looking for the
 	 first bus on the domain  */
       for (pciBusNbr=0; pciBusNbr<0xff; pciBusNbr++) {
 
-	error = PciParseDev( h,
+        error = PciParseDev( h,
 			     OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr),
 			     h->pciPath[0], &vendorID, &deviceID, &headerType,
 			     &secondBus );
-	if ( error == ERR_SUCCESS && vendorID != 0xffff && deviceID != 0xffff )
-	  break; /* found device */
+#ifdef VXWORKS
+        if ( error == ERR_SUCCESS && vendorID != 0xffff && deviceID != 0xffff )
+#else
+        if ( error == ERR_SUCCESS )
+#endif
+	      break; /* found device */
       }
 
       if ( error != ERR_SUCCESS ) { /* device not found */
-	DBGWRT_ERR((DBH,"*** BB - %s: first device 0x%02x in pci bus path "
+        DBGWRT_ERR((DBH,"*** BB - %s: first device 0x%02x in pci bus path "
 		    "not found on domain %d!\n",
 		    BBNAME, h->pciPath[0], h->pciDomainNbr ));
-	return error;
+        return error;
       }
     } else {
       /* parse device only once */
@@ -2570,7 +2595,7 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
       return ERR_BBIS_NO_CHECKLOC;
     }
 
-#ifdef VXW_PCI_DOMAIN_SUPPORT
+#if ( !defined(VXWORKS) || defined(VXW_PCI_DOMAIN_SUPPORT) )
     /*--- device is present, is it a bridge ? ---*/
     if( (headerType & ~OSS_PCI_HEADERTYPE_MULTIFUNCTION) != OSS_PCI_HEADERTYPE_BRIDGE_TYPE ){
       DBGWRT_ERR((DBH,"*** BB - %s:ParsePciPath: Device is not a bridge!"
