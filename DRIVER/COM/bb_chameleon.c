@@ -241,9 +241,6 @@ typedef struct {
   char 		*girqPhysAddr;		/* GIRQ unit physical address */
   char 		*girqVirtAddr;		/* GIRQ unit virtual address */
   u_int32		girqApiVersion;		/* GIRQ application feature register */
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-  OSS_IRQ_HANDLE	*irqHdl;		/* irq handle */
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
   u_int32		autoEnum;			/* <>0: auomatic enumeration */
   u_int8      exclModCodes[MAX_EXCL_MODCODES]; /* excluded module codes */
   u_int32		exclModCodesNbr;		/* number of excluded module codes */
@@ -322,9 +319,6 @@ static int32 PciCfgErr(
 		       u_int32 reg );
 #endif /* CHAM_ISA */
 
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-static int32 CHAMELEON_SetIrqHandle( BBIS_HANDLE *h, OSS_IRQ_HANDLE *irqHdl );
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
 
 /**************************** CHAMELEON_GetEntry ***********************************
  *
@@ -353,12 +347,7 @@ extern void __BB_CHAMELEON_GetEntry( BBIS_ENTRY *bbisP )
   bbisP->irqEnable    =   CHAMELEON_IrqEnable;
   bbisP->irqSrvInit   =   CHAMELEON_IrqSrvInit;
   bbisP->irqSrvExit   =   CHAMELEON_IrqSrvExit;
-
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-  bbisP->setIrqHandle =   CHAMELEON_SetIrqHandle;
-#else /* BBIS_DONT_USE_IRQ_MASKR */
   bbisP->setIrqHandle =   NULL;
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
 
   bbisP->fkt14        =   CHAMELEON_Unused;
   /* exception handling */
@@ -497,22 +486,37 @@ static int32 CHAMELEON_Init(
 #ifndef CHAM_ISA
   /*---- get PCI domain/bus/device number ----*/
 
-  /* PCI_DOMAIN_NUMBER - optional */
+  /* PCI_DOMAIN_NUMBER - optional (default: 0) */
   status = DESC_GetUInt32( h->descHdl, 0, &h->pciDomainNbr, "PCI_DOMAIN_NUMBER");
-
-  if ( status == ERR_DESC_KEY_NOTFOUND ) {
-    /* default pci domain is 0 */
-    h->pciDomainNbr = 0;
+  if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+    return( Cleanup(h,status) );
+  if(status!=ERR_DESC_KEY_NOTFOUND){
+    DBGWRT_3((DBH, " read PCI_DOMAIN_NUMBER=0x%x",h->pciDomainNbr));
   }
-
 
   /* PCI_BUS_NUMBER - required if PCI_BUS_PATH not given  */
   status = DESC_GetUInt32( h->descHdl, 0, &h->pciBusNbr, "PCI_BUS_NUMBER");
+  if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+    return( Cleanup(h,status) );
+  if(status!=ERR_DESC_KEY_NOTFOUND){
+    DBGWRT_3((DBH, " read PCI_BUS_NUMBER=0x%x",h->pciBusNbr));
+  }
 
   if( status == ERR_DESC_KEY_NOTFOUND ){
     /* PCI_BUS_PATH - required if PCI_DEVICE_NUMBER not given */
     h->pciPathLen = MAX_PCI_PATH;
     status = DESC_GetBinary( h->descHdl, (u_int8*)"", 0, h->pciPath, &h->pciPathLen, "PCI_BUS_PATH");
+    if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+      return( Cleanup(h,status) );
+#ifdef DBG
+    if(status!=ERR_DESC_KEY_NOTFOUND){
+      DBGWRT_3((DBH, " read PCI_BUS_PATH="));
+      for(i=0; i<h->pciPathLen; i++){
+        DBGWRT_3((DBH, "0x%x (dev=0x%x, func=0x%x)", h->pciPath[i], h->pciPath[i]&0x1f,  h->pciPath[i]>>5));
+      }
+      DBGWRT_3((DBH, "\n"));
+    }
+#endif
 
     if( status ){
       DBGWRT_ERR((DBH, "*** BB - %s_Init: Found neither Desc Key "
@@ -520,24 +524,19 @@ static int32 CHAMELEON_Init(
       return( Cleanup(h,status) );
     }
 
-#ifndef VXW_PCI_DOMAIN_SUPPORT
+#if ( defined(VXWORKS) && !defined(VXW_PCI_DOMAIN_SUPPORT) )
     /* ts: tweak for F50P + vxW64. TODO: clean up when also supporting F50P on vxW69 !!! */
+    DBGWRT_3((DBH, " CAUTION: strange VxWorks tweak from ts\n"));
     DESC_GetUInt32( h->descHdl, 0, &mechSlot, "PCI_BUS_SLOT");
     h->pciDomainNbr = 0;
     h->pciPathLen = 1;
     h->pciPath[0] = 0x11 - mechSlot;
+    DBGWRT_3((DBH, " PCI_BUS_PATH=0x%x", h->pciPath[0]));
 #endif
 
     /*--------------------------------------------------------+
       |  parse the PCI_PATH to determine bus number of devices  |
       +--------------------------------------------------------*/
-#ifdef DBG
-    DBGWRT_2((DBH, " PCI_PATH="));
-    for(i=0; i<h->pciPathLen; i++){
-      DBGWRT_2((DBH, "0x%x ", h->pciPath[i]));
-    }
-    DBGWRT_2((DBH, "\n"));
-#endif
     if( (status = ParsePciPath( h, &h->pciBusNbr )) )
       return( Cleanup(h,status));
 
@@ -555,14 +554,21 @@ static int32 CHAMELEON_Init(
   /* PCI_DEVICE_NUMBER - required if PCI_BUS_SLOT not given  */
   status = DESC_GetUInt32( h->descHdl, 0xffff, &h->pciDevNbr,
 			   "PCI_DEVICE_NUMBER");
-
   if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
     return( Cleanup(h,status) );
+  if(status!=ERR_DESC_KEY_NOTFOUND){
+    DBGWRT_3((DBH, " read PCI_DEVICE_NUMBER=0x%x",h->pciDevNbr));
+  }
 
   if(status==ERR_DESC_KEY_NOTFOUND){
 
     /* PCI_BUS_SLOT - required if PCI_DEVICE_NUMBER not given */
     status = DESC_GetUInt32( h->descHdl, 0, &mechSlot, "PCI_BUS_SLOT");
+    if( status && (status!=ERR_DESC_KEY_NOTFOUND) )
+      return( Cleanup(h,status) );
+    if(status!=ERR_DESC_KEY_NOTFOUND){
+      DBGWRT_3((DBH, " read PCI_BUS_SLOT=0x%x",mechSlot));
+    }
 
     if( status==ERR_DESC_KEY_NOTFOUND ){
       DBGWRT_ERR((DBH, "*** BB - %s_Init: Found neither Desc Key "
@@ -1776,35 +1782,6 @@ static int32 CHAMELEON_CfgInfo(
   return status;
 }
 
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-/*************************** CHAMELEON_SetIrqHandle **************************
- *
- *  Description:  Set the irq handle for BBIS.
- *
- *---------------------------------------------------------------------------
- *  Input......:  h			pointer to board handle structure
- *                irqHdl    irq handle
- *  Output.....:  return    0 | ERR_BBIS_ILL_IRQPARAM
- *  Globals....:  ---
- ****************************************************************************/
-static int32 CHAMELEON_SetIrqHandle( BBIS_HANDLE *h, OSS_IRQ_HANDLE *irqHdl )
-{
-  int32 error = ERR_BBIS_ILL_IRQPARAM;
-
-  if( irqHdl )
-    {
-      h->irqHdl = irqHdl;
-      error = 0;
-    }
-  else
-    {
-      DBGWRT_ERR((DBH, "*** BB - %sSetIrqHandle: irqHdl is NULL\n", BBNAME ));
-    }
-
-  return( error );
-}
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
-
 /****************************** CHAMELEON_IrqEnable **************************
  *
  *  Description:  Chameleon BBIS Interrupt enable / disable for the unit.
@@ -1822,19 +1799,17 @@ static int32 CHAMELEON_IrqEnable(
 				 u_int32         enable )
 {
   DBGCMD(	static const char functionName[] = "_IrqEnable:"; )
-    int32	error = 0;
+  int32	error = 0;
   u_int32 irqen = 0x00000000;
   u_int32 irqenLittleEndian = 0x00000000;
+  u_int32 irqen_readback = 0x00000000;
+  int i = 0;
   int slotShift;
 
   DBGWRT_1((DBH, "BB - %s %s: slot=%d; enable=%d\n", BBNAME,functionName,slot,enable ));
 
   if( h->girqVirtAddr )
     {
-
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-      OSS_IRQ_STATE oldState;
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
 
       int			offs		= 0;
       u_int32		girqInUse	= 0; /* GIRQ hardware Spin Lock */
@@ -1900,51 +1875,54 @@ static int32 CHAMELEON_IrqEnable(
 		  BBNAME, functionName, girqCount ));
       }
 
-
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-      /* sanity check */
-      if( h->irqHdl == NULL )
-	{
-	  error = ERR_BBIS_ILL_IRQPARAM;
-	  DBGWRT_ERR((DBH, "*** BB - %s%s: SetIrqHandle must be called before\n", BBNAME,functionName ));
-	  goto CLEANUP;
-	}
-
-      /* lock critical section - disable context change i.e. to VxWorks intEnable() in the same FPGA
-       * IRQ_MASK for old designs i.e. EM1 VxWorks this BBIS driver and interrupt controller driver
+      /* Verify and re-write if BBCHAM_GIRQ_IRQ_EN has changed in the meantime
+       * This problem occured with async use of vxbmengirq, which can overwrite the BBCHAM_GIRQ_IRQ_EN register
        */
-      oldState = OSS_IrqMaskR(  h->osHdl, h->irqHdl );
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
-      /* set/reset slot corresponding irq enable bit */
-      _MREAD_D32(irqen, h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs);
+      for(i=0; i<10; i++)
+      {
+          /* set/reset slot corresponding irq enable bit */
+          _MREAD_D32(irqen, h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs);
 
 #ifdef	_BIG_ENDIAN_
-      irqenLittleEndian = OSS_SWAP32( irqen );
+          irqenLittleEndian = OSS_SWAP32( irqen );
 #else
-      irqenLittleEndian = irqen;
+          irqenLittleEndian = irqen;
 #endif
 
-      if( enable )
-	{
-	  irqenLittleEndian |= (0x00000001 << (slotShift));
-	}
-      else
-	{
-	  irqenLittleEndian &= ~(0x00000001 << (slotShift));
-	}
+          if( enable )
+          {
+	    irqenLittleEndian |= (0x00000001 << (slotShift));
+          }
+          else
+          {
+	    irqenLittleEndian &= ~(0x00000001 << (slotShift));
+	  }
 
 #ifdef _BIG_ENDIAN_
-      irqen = OSS_SWAP32( irqenLittleEndian );
+          irqen = OSS_SWAP32( irqenLittleEndian );
 #else
-      irqen = irqenLittleEndian;
+          irqen = irqenLittleEndian;
 #endif
 
-      _MWRITE_D32(h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs, irqen);
+          _MWRITE_D32(h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs, irqen);
 
-#ifndef BBIS_DONT_USE_IRQ_MASKR
-      /* unlock critical section */
-      OSS_IrqRestore( h->osHdl, h->irqHdl, oldState );
-#endif /* BBIS_DONT_USE_IRQ_MASKR */
+          /* wait and verify */
+	  OSS_MikroDelay(h->osHdl, 100 );
+	   _MREAD_D32(irqen_readback, h->girqVirtAddr, BBCHAM_GIRQ_IRQ_EN + offs);
+
+	  if( irqen_readback == irqen )
+	  {
+	    break;
+	  }
+	  else
+	  {
+            DBGWRT_ERR((DBH, "*** BB - %s%s: BBCHAM_GIRQ_IRQ_EN has been overwritten, retry #%d\n", BBNAME,functionName, i ));
+	  }
+      }
+      if( i >= 10 )
+      {
+        DBGWRT_ERR((DBH, "*** BB - %s%s: unable to set BBCHAM_GIRQ_IRQ_EN correctly!\n", BBNAME,functionName));
+      }
 
       /* GIRQ INUSE_STS bit available */
       if ( h->girqApiVersion ) {
@@ -2570,29 +2548,37 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
 
     pciDevNbr = h->pciPath[i];
 
+#ifdef VXWORKS
     if ( ( i==0 )
-#ifdef VXW_PCI_DOMAIN_SUPPORT
+#	ifdef VXW_PCI_DOMAIN_SUPPORT
 	 && ( 0 != h->pciDomainNbr )
-#endif
+#	endif
 	 ) {
+#else
+    if ( ( i==0 ) && ( 0 != h->pciDomainNbr )) {
+#endif
       /* as we do not know the numbering order of busses on pci domains,
 	 try to find the device on all busses instead of looking for the
 	 first bus on the domain  */
       for (pciBusNbr=0; pciBusNbr<0xff; pciBusNbr++) {
 
-	error = PciParseDev( h,
+        error = PciParseDev( h,
 			     OSS_MERGE_BUS_DOMAIN(pciBusNbr, h->pciDomainNbr),
 			     h->pciPath[0], &vendorID, &deviceID, &headerType,
 			     &secondBus );
-	if ( error == ERR_SUCCESS && vendorID != 0xffff && deviceID != 0xffff )
-	  break; /* found device */
+#ifdef VXWORKS
+        if ( error == ERR_SUCCESS && vendorID != 0xffff && deviceID != 0xffff )
+#else
+        if ( error == ERR_SUCCESS )
+#endif
+	      break; /* found device */
       }
 
       if ( error != ERR_SUCCESS ) { /* device not found */
-	DBGWRT_ERR((DBH,"*** BB - %s: first device 0x%02x in pci bus path "
+        DBGWRT_ERR((DBH,"*** BB - %s: first device 0x%02x in pci bus path "
 		    "not found on domain %d!\n",
 		    BBNAME, h->pciPath[0], h->pciDomainNbr ));
-	return error;
+        return error;
       }
     } else {
       /* parse device only once */
@@ -2609,7 +2595,7 @@ static int32 ParsePciPath( BBIS_HANDLE *h, u_int32 *pciBusNbrP ) 	/* nodoc */
       return ERR_BBIS_NO_CHECKLOC;
     }
 
-#ifdef VXW_PCI_DOMAIN_SUPPORT
+#if ( !defined(VXWORKS) || defined(VXW_PCI_DOMAIN_SUPPORT) )
     /*--- device is present, is it a bridge ? ---*/
     if( (headerType & ~OSS_PCI_HEADERTYPE_MULTIFUNCTION) != OSS_PCI_HEADERTYPE_BRIDGE_TYPE ){
       DBGWRT_ERR((DBH,"*** BB - %s:ParsePciPath: Device is not a bridge!"
